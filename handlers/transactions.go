@@ -114,8 +114,9 @@ func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Re
 			TransIdIsMatch = true
 		}
 	}
-
+	unixTime := userId + rand.Intn(1000) - -rand.Intn(1000)
 	transaction := models.Transaction{
+		ID:        unixTime,
 		StartDate: currentTime,
 		DueDate:   dueDate,
 		// Attache:   os.Getenv("PATH_FILE") + filename,
