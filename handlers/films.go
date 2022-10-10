@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	filmsdto "dumbflix/dto/films"
 	dto "dumbflix/dto/result"
 	"dumbflix/models"
@@ -10,6 +11,9 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+
+	"github.com/cloudinary/cloudinary-go/v2"
+	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/golang-jwt/jwt/v4"
@@ -67,7 +71,7 @@ func (h *handlerFilm) CreateFilm(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Println(userId)
 	dataContex := r.Context().Value("dataFile")
-	filename := dataContex.(string)
+	filepath := dataContex.(string)
 
 	category_id, _ := strconv.Atoi(r.FormValue("category_id"))
 
@@ -76,7 +80,7 @@ func (h *handlerFilm) CreateFilm(w http.ResponseWriter, r *http.Request) {
 		Year:       r.FormValue("year"),
 		CategoryID: category_id,
 		Desc:       r.FormValue("desc"),
-		Thumbnail:  filename,
+		Thumbnail:  filepath,
 		LinkFilm:   r.FormValue("link"),
 	}
 
@@ -89,9 +93,23 @@ func (h *handlerFilm) CreateFilm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var ctx = context.Background()
+	var CLOUD_NAME = os.Getenv("CLOUD_NAME")
+	var API_KEY = os.Getenv("API_KEY")
+	var API_SECRET = os.Getenv("API_SECRET")
+
+	// Add your Cloudinary credentials ...
+	cld, _ := cloudinary.NewFromParams(CLOUD_NAME, API_KEY, API_SECRET)
+
+	// Upload file to Cloudinary ...
+	resp, err := cld.Upload.Upload(ctx, filepath, uploader.UploadParams{Folder: "dumbmerch"})
+
+	if err != nil {
+		fmt.Println(err.Error())
+	}
 	film := models.Film{
 		Title:         request.Title,
-		ThumbnailFilm: filename,
+		ThumbnailFilm: resp.SecureURL,
 		Year:          request.Year,
 		CategoryID:    request.CategoryID,
 		Desc:          request.Desc,
@@ -157,7 +175,6 @@ func (h *handlerFilm) UpdateFilm(w http.ResponseWriter, r *http.Request) {
 	if request.Desc != "" {
 		film.Desc = request.Desc
 	}
-	
 
 	data, err := h.FilmRepository.UpdateFilm(film)
 	if err != nil {
@@ -201,7 +218,7 @@ func convertResponseFilm(u models.Film) filmsdto.FilmResponse {
 	return filmsdto.FilmResponse{
 		ID:         u.ID,
 		Title:      u.Title,
-		Thumbnail:  os.Getenv("PATH_FILE") + u.ThumbnailFilm,
+		Thumbnail:  u.ThumbnailFilm,
 		Category:   u.Category,
 		CategoryID: u.CategoryID,
 		Year:       u.Year,
